@@ -1,0 +1,28 @@
+name: Deploy Production
+on:
+  push:
+    branches: [dev]
+permissions:
+  contents: read
+jobs:
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    # Production approvals: GitHub Settings > Environments > production > Required reviewers
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Deploy to production via SSH
+        env:
+          HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+          USER: ${{ secrets.PRODUCTION_SSH_USER }}
+          KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key -p "$PORT" "$USER@$HOST" \
+            'cd ~/frappe-bench && bench migrate && bench build && bench restart'
